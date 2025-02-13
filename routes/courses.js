@@ -10,6 +10,15 @@ const router = express.Router();
 // Instruction: Import the course model
 const Course = require("../models/course");
 
+// Import the course controller functions
+const {
+  getCourses,
+  getCourse,
+  updateCourse,
+  addNewCourse,
+  deleteCourse,
+} = require("../controllers/course");
+
 /* 
     Instruction: 
     - setup GET /: List all courses (utilize populate() to bring in instructor details)
@@ -17,7 +26,7 @@ const Course = require("../models/course");
 router.get("/", async (req, res) => {
   try {
     // Get all courses
-    const courses = await Course.find().populate("instructor");
+    const courses = await getCourses();
     // Send retrieved courses data to requester
     res.status(200).send(courses);
   } catch (error) {
@@ -43,7 +52,7 @@ router.get("/:id", async (req, res) => {
     }
 
     // If no errors above, get the specific course
-    const course = await Course.findById(_id).populate("instructor");
+    const course = await getCourse(_id);
 
     // If course exists, send the course to the requester
     if (course) {
@@ -82,27 +91,26 @@ router.post("/", async (req, res) => {
     }
 
     // Checks for a duplicate course
-    const existingCourse = await Course.findOne({ title, instructor });
+    const existingCourse = await Course.findOne({ title, instructor }).populate(
+      "instructor"
+    );
     if (existingCourse) {
       // Sends an error to the requester if a duplicate course is found
       return res.status(400).send({
-        error: `The course ${title}, taught by ${instructor} has already been added!`,
+        error: `The course ${title}, taught by ${existingCourse.instructor.name} has already been added!`,
       });
     }
 
     // If no errors above, add the new course
-    const newCourse = new Course({
+    const newCourse = await addNewCourse(
       title,
       instructor,
       startDate,
       endDate,
       subject,
       description,
-      enrolmentCount,
-    });
-
-    // Save the new course in the database
-    await newCourse.save();
+      enrolmentCount
+    );
 
     // Sends the newly created course back to the requester with 201 created status for successful creation
     res.status(201).send(newCourse);
@@ -137,7 +145,7 @@ router.put("/:id", async (req, res) => {
     }
 
     // Checks if there exists a course with the retrieved ID
-    const existingCourseOne = await Course.findById(_id);
+    const existingCourseOne = await getCourse(_id);
 
     // Sends an error to the requester if no matching course is found
     if (!existingCourseOne) {
@@ -172,30 +180,27 @@ router.put("/:id", async (req, res) => {
     }
 
     // Checks for a duplicate course
-    const existingCourseTwo = Course.findOne({ title, instructor });
+    const existingCourseTwo = await Course.findOne({
+      title,
+      instructor,
+    }).populate("instructor");
 
     // Sends an error to the requester if a duplicate course is found.
     if (existingCourseTwo) {
       return res.status(400).send({
-        error: `The course ${title}, taught by ${instructor} has already been added!`,
+        error: `The course, ${title} with instructor ${existingCourseTwo.instructor.name} has already been added!`,
       });
     }
 
     // If no errors above, update the course details.
-    const updatedCourse = await Course.findByIdAndUpdate(
-      _id,
-      {
-        title,
-        instructor,
-        startDate,
-        endDate,
-        subject,
-        description,
-        enrolmentCount,
-      },
-      {
-        new: true,
-      }
+    const updatedCourse = await updateCourse(
+      title,
+      instructor,
+      startDate,
+      endDate,
+      subject,
+      description,
+      enrolmentCount
     );
 
     // Sends the newly updated course back to the requester with 200 OK status
@@ -203,7 +208,7 @@ router.put("/:id", async (req, res) => {
   } catch (error) {
     // Sends an error to the requester if any server error in updating course
     res.status(400).send({
-      error: `Error updating course (ID: ${id}): ${error._message}`,
+      error: `Error updating course: ${error._message}`,
     });
   }
 });
@@ -223,20 +228,20 @@ router.delete("/:id", async (req, res) => {
     }
 
     // Checks if there is a course with that specific id
-    const course = await Course.findById(_id);
+    const course = await getCourse(_id);
     if (!course) {
       // Sends an error to the requester if no course with that specific id is found
       return res.status(404).send({
-        error: `No match for an course found with the ID: ${id}!`,
+        error: `No match for an course found with the ID: ${_id}!`,
       });
     }
 
     // If no errors above, delete the course
-    await Course.findByIdAndDelete(_id);
+    await deleteCourse(_id);
 
     // Send an alert to the requester to tell them the course has been sucesfully deleted.
     res.status(200).send({
-      message: `Course with the provided ID: ${id} has been deleted!`,
+      message: `Course with the provided ID: ${_id} has been deleted!`,
     });
   } catch (error) {
     // Send an error to the requester if there is any server error in deleting the course

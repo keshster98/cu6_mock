@@ -10,11 +10,20 @@ const router = express.Router();
 // Instruction: Import the instructor model
 const Instructor = require("../models/instructor");
 
+// Import the instructor controller functions
+const {
+  getInstructors,
+  getInstructor,
+  addNewInstructor,
+  updateInstructor,
+  deleteInstructor,
+} = require("../controllers/instructor");
+
 // Instruction: GET /: List all instructors
 router.get("/", async (req, res) => {
   try {
     // Get all instructors
-    const instructors = await Instructor.find();
+    const instructors = await getInstructors();
     // Send retrieved instructors data to requester
     res.status(200).send(instructors);
   } catch (error) {
@@ -40,7 +49,7 @@ router.get("/:id", async (req, res) => {
     }
 
     // If no errors above, get the specific instructor
-    const instructor = await Instructor.findById(_id);
+    const instructor = await getInstructor(_id);
 
     // If instructor exists, send the instructor to the requester
     if (instructor) {
@@ -64,10 +73,7 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     // Retrieve the required data from req.body
-    const name = req.body.name;
-    const qualification = req.body.qualification;
-    const profile = req.body.profile;
-    const coursesTaught = req.body.coursesTaught;
+    const { name, qualification, profile, coursesTaught } = req.body;
 
     // Check if the 1 required field is filled up
     if (!name) {
@@ -88,15 +94,12 @@ router.post("/", async (req, res) => {
     }
 
     // If no errors above, add the new instructor
-    const newInstructor = new Instructor({
+    const newInstructor = await addNewInstructor(
       name,
       qualification,
       profile,
-      coursesTaught,
-    });
-
-    // Save the new instructor in the database
-    await newInstructor.save();
+      coursesTaught
+    );
 
     // Sends the newly created instructor back to the requester with 201 created status for successful creation
     res.status(201).send(newInstructor);
@@ -170,17 +173,12 @@ router.put("/:id", async (req, res) => {
     }
 
     // If no errors above, update the instructor details.
-    const updatedInstructor = await Instructor.findByIdAndUpdate(
+    const updatedInstructor = await updateInstructor(
       _id,
-      {
-        name,
-        qualification,
-        profile,
-        coursesTaught,
-      },
-      {
-        new: true,
-      }
+      name,
+      qualification,
+      profile,
+      coursesTaught
     );
 
     // Sends the newly updated instructor back to the requester with 200 OK status
@@ -217,7 +215,7 @@ router.delete("/:id", async (req, res) => {
     }
 
     // If no errors above, delete the instructor
-    await Instructor.findByIdAndDelete(_id);
+    await deleteInstructor(_id);
 
     // Send an alert to the requester to tell them the instructor has been sucesfully deleted.
     res.status(200).send({
